@@ -186,7 +186,7 @@
                 <h2 class="text-center mb-4">Mortgage Calculator</h2>
                 <div class="card">
                     <div class="card-body">
-                        <form action="" method="POST" role="form" class="form-horizontal">
+                        <form action="" method="POST" role="form" class="form-horizontal sabbir">
                             <!-- <div class="form-group my-3">
                                 <input type="checkbox" id="ShowDebugInfo" name="ShowDebugInfo" value="true" checked>
                                 <label for="ShowDebugInfo" class="my-1 col-sm-2 control-label">Show Debug Info<span class="required">*</span></label>
