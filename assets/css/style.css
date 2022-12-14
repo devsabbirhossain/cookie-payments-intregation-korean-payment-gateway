@@ -1,0 +1,9 @@
+.required{
+    color: red;
+}
+
+.key-title{
+    font-weight: 500;
+    text-transform: uppercase;
+    font-style: bold;
+}
