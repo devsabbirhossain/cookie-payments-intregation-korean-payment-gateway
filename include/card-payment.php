@@ -1,35 +1,84 @@
 <?php
 
-//Silence Is Good
-
-/*
- * This action hook registers WooCommerce payment gateway
- */
-add_filter( 'woocommerce_payment_gateways', 'cookiepayments_add_gateway_class' );
-function cookiepayments_add_gateway_class( $gateways ) {
-	$gateways[] = 'WC_CookiePayments_Gateway'; // your class name is here
+add_filter( 'woocommerce_payment_gateways', 'cookiepayments_card_add_gateway_class' );
+function cookiepayments_card_add_gateway_class( $gateways ) {
+	$gateways[] = 'WC_cookiepayments_card_Gateway'; // your class name is here
 	return $gateways;
 }
 
+add_action('wp_head', function(){
 
+	if( isset( $_GET['orderid'] ) ){
+		$order_id = $_GET['orderid'];
+
+		$order = wc_get_order( $order_id );
+	
+		if( empty( $order_id ) ){
+			wp_redirect( home_url() );
+		}else {
+
+			if ($order->data['status'] == 'pending') {
+				$payment_method=$order->get_payment_method();
+				if ($payment_method != "cod")
+				{
+					$order->update_status( 'processing' );
+					// $method_class = new WC_Payment_Gateway;
+					// wp_redirect( $method_class->get_return_url( $order ));
+					wp_redirect( home_url() . '/thankyou' );
+				}
+			}
+
+			// if(isset($_REQUEST['RESULT_CODE'])) {
+			// 	// pay success  
+			// 	if($_REQUEST['RESULT_CODE'] == "0000") {  
+			// 		// echo $_REQUEST['RESULT_MSG'];
+			// 		if ($order->data['status'] == 'pending') {
+			// 			$payment_method=$order->get_payment_method();
+			// 			if ($payment_method != "cod")
+			// 			{
+			// 				$order->update_status( 'processing' );
+			// 				// $method_class = new WC_Payment_Gateway;
+			// 				// wp_redirect( $method_class->get_return_url( $order ));
+			// 				wp_redirect( home_url() . '/thankyou' );
+			// 			}
+			// 		}
+			// 		// pay success process area  
+			// 	} 
+			// 	// pay fail  
+			// 	else if($_REQUEST['RESULT_CODE]'] != "0000") {  
+			// 		// echo $_REQUEST['RESULT_MSG'];
+			// 		wp_redirect( home_url() );
+			// 		// pay fail process area  ​  
+			// 	}  
+			// }else {
+			// 	wp_redirect( home_url() );
+			// }
+
+
+			
+		}
+	}
+	
+
+});
 
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
-add_action( 'plugins_loaded', 'cookiepayments_init_gateway_class' );
-function cookiepayments_init_gateway_class() {
+add_action( 'plugins_loaded', 'cookiepayments_card_init_gateway_class' );
+function cookiepayments_card_init_gateway_class() {
 
-	class WC_CookiePayments_Gateway extends WC_Payment_Gateway {
+	class WC_cookiepayments_card_Gateway extends WC_Payment_Gateway {
 
  		/**
  		 * Class constructor, more about it in Step 3
  		 */
  		public function __construct() {
-	        $this->id = 'cookiepayments'; // payment gateway plugin ID
-	        $this->icon =  plugin_dir_url( ( __FILE__ ) ) . 'assets/img/cookiepayments-logo.png';; // URL of the icon that will be displayed on checkout page near your gateway name
+	        $this->id = 'cookiepayments_card'; // payment gateway plugin ID
+	        $this->icon =  plugin_dir_url( ( __FILE__ ) ) . '../assets/img/cookiepayments-logo.png';; // URL of the icon that will be displayed on checkout page near your gateway name
 	        $this->has_fields = true; // in case you need a custom credit card form
-	        $this->method_title = 'CookiePayments Gateway';
-	        $this->method_description = 'CookiePayments payment gateway'; // will be displayed on the options page
+	        $this->method_title = 'CookiePayments Card Gateway';
+	        $this->method_description = 'CookiePayments Card payment gateway'; // will be displayed on the options page
 
 	        // gateways can support subscriptions, refunds, saved payment methods,
 	        // but in this tutorial we begin with simple payments
@@ -42,31 +91,40 @@ function cookiepayments_init_gateway_class() {
 	        //CookiePayments
 	        // Load the settings.
 	        $this->init_settings();
-	        $this->title = $this->get_option( 'cookiepayments_title' );
-	        $this->description = $this->get_option( 'cookiepayments_description' );
+	        $this->title = $this->get_option( 'cookiepayments_card_title' );
+	        $this->description = $this->get_option( 'cookiepayments_card_description' );
 	        $this->enabled = $this->get_option( 'enabled' );
-	        $this->get_option( 'cookiepayments_api_key' );
-	        $this->get_option( 'cookiepayments_api_id' );
+	        $this->get_option( 'cookiepayments_card_api_key' );
+	        $this->get_option( 'cookiepayments_card_api_id' );
 	        // This action hook saves the settings
 	        add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
-	        add_action('wp_head', function(){
-	        	//none
-	        });
+
 
 	        // thank you page hook
 	        add_action('woocommerce_thankyou', function($order_id){
 	        	$success = isset( $_GET['success'] ) ? $_GET['success'] : 0;
 				$order = wc_get_order( $order_id );
 
+				if($success == 1){
+					if ($order->data['status'] == 'pending') {
+				        $payment_method=$order->get_payment_method();
+				        if ($payment_method != "cod")
+				        {
+				            $order->update_status( 'processing' );
+				            wp_redirect( $this->get_return_url( $order ));
+				        }
+				    }
+				}
+				
 				echo  $this->get_return_url( $order ) . '&success=' . $success;
-				return;
+				// return;
 				$order_data = $order->get_data();
          		$payment_method = $order_data['payment_method'];
 
-	         	if($order->get_status() == 'pending' && $payment_method == 'cookiepayments'){
-		         	$api_id = get_option('woocommerce_cookiepayments_settings')['cookiepayments_api_id'];    
-		            $api_key = get_option('woocommerce_cookiepayments_settings')['cookiepayments_api_key']; 
+	         	if($order->get_status() == 'pending' && $payment_method == 'cookiepayments_card'){
+		         	$api_id = get_option('woocommerce_cookiepayments_card_settings')['cookiepayments_card_api_id'];    
+		            $api_key = get_option('woocommerce_cookiepayments_card_settings')['cookiepayments_card_api_key']; 
 
 
 					$order_id = $order_data['id']; 
@@ -105,7 +163,7 @@ function cookiepayments_init_gateway_class() {
 					array_push($headers, "Content-Type: application/json; charset=utf-8");
 					array_push($headers, "ApiKey: $api_key");
 
-					$cookiepayments_url = "https://www.cookiepayments.com/pay/ready";
+					$cookiepayments_card_url = "https://www.cookiepayments.com/pay/ready";
 
 					$product1 = isset($product_names[0]) ? $product_names[0] : '';
 					$product2 = isset($product_names[1]) ? $product_names[1] : '';
@@ -120,9 +178,9 @@ function cookiepayments_init_gateway_class() {
 					    'AMOUNT' => $order_total,
 					    'BUYERNAME' => $order_billing_fullname,
 					    'BUYEREMAIL' => $order_billing_email,
-					    'RETURNURL' => $this->get_return_url( $order ) . '&success=' . $success,
+					    'RETURNURL' => home_url() . "/?orderid=$order_id",
 					    'PRODUCTCODE' => $product_ids[0],
-					    'PAYMETHOD' => $order_payment_method,
+					    'PAYMETHOD' => 'CARD',
 					    'BUYERID' => $order_customer_id,
 					    'BUYERADDRESS' => $order_billing_address,
 					    'BUYERPHONE' => $order_billing_phone,
@@ -130,16 +188,21 @@ function cookiepayments_init_gateway_class() {
 					    'ETC2' => $product2,
 					    'ETC3' => $product3,
 					    'ETC4' => $product4,
-					    'ETC5' => $product5,
+					    'ETC5' => home_url(),
+						'CANCELURL' => home_url(),
+						'CANCELULR' => home_url(),
+						'HOMEURL' => home_url(),
+						'FAILURL' => home_url(),
+						'CLOSEURL' => home_url(),
 					);
 
-					$cookiepayments_json = json_encode($request_data_array, JSON_UNESCAPED_UNICODE);
+					$cookiepayments_card_json = json_encode($request_data_array, JSON_UNESCAPED_UNICODE);
 
 					$ch = curl_init();
 
-					curl_setopt($ch, CURLOPT_URL, $cookiepayments_url);
+					curl_setopt($ch, CURLOPT_URL, $cookiepayments_card_url);
 					curl_setopt($ch, CURLOPT_POST, false);
-					curl_setopt($ch, CURLOPT_POSTFIELDS, $cookiepayments_json);
+					curl_setopt($ch, CURLOPT_POSTFIELDS, $cookiepayments_card_json);
 					curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 					curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 					curl_setopt($ch, CURLOPT_TIMEOUT, 20);
@@ -160,30 +223,30 @@ function cookiepayments_init_gateway_class() {
 	        $this->form_fields = array(
 	            'enabled' => array(
 	               'title'       => 'Enable/Disable',
-	               'label'       => 'Enable CookiePayments Gateway',
+	               'label'       => 'Enable CookiePayments Card Gateway',
 	               'type'        => 'checkbox',
 	               'description' => '',
 	               'default'     => 'no'
 	            ),
-	            'cookiepayments_title' => array(
+	            'cookiepayments_card_title' => array(
 	               'title'       => 'Title',
 	               'type'        => 'text',
 	               'description' => 'This controls the title which the user sees during checkout.',
-	               'default'     => 'CookiePayments Payment',
+	               'default'     => 'CookiePayments Card',
 	               'desc_tip'    => true,
 	            ),
-	            'cookiepayments_description' => array(
+	            'cookiepayments_card_description' => array(
 	               'title'       => 'Description',
 	               'type'        => 'textarea',
 	               'description' => 'This controls the description which the user sees during checkout.',
-	               'default'     => 'Pay with cookiepayments payment gateway.',
+	               'default'     => 'Pay with cookiepayments card payment gateway.',
 	            ),
-	            'cookiepayments_api_id' => array(
+	            'cookiepayments_card_api_id' => array(
 	               'title'       => 'API ID',
 	               'type'        => 'text'
 	            ),
 	            
-	            'cookiepayments_api_key' => array(
+	            'cookiepayments_card_api_key' => array(
 	               'title'       => 'API Key',
 	               'type'        => 'text'
 	            ),
